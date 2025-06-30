@@ -1,0 +1,28 @@
+# Step 1: Import Libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Step 2: Load the Dataset
+df = pd.read_csv("gdp_data.csv")
+
+# Step 3: Quick Look at the Data
+print(df.head())
+print(df.columns)
+
+# Step 4: Filter for a Country (e.g., United States)
+us_data = df[df["Country Name"] == "United States"]
+
+# Step 5: Clean the Data (remove nulls and select years)
+us_data = us_data.loc[:, "1960":"2022"].T  # Transpose years to rows
+us_data.columns = ["GDP"]
+us_data = us_data.dropna()
+us_data.index = us_data.index.astype(int)
+
+# Step 6: Plot the GDP Over Time
+plt.figure(figsize=(10, 6))
+plt.plot(us_data.index, us_data["GDP"] / 1e12)  # Convert to trillions
+plt.title("U.S. GDP Over Time")
+plt.xlabel("Year")
+plt.ylabel("GDP (Trillions USD)")
+plt.grid(True)
+plt.show()
