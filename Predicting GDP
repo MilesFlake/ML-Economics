@@ -1,28 +1,132 @@
-# Step 1: Import Libraries
+
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression as lnrg
+import numpy as np
 
-# Step 2: Load the Dataset
-df = pd.read_csv("gdp_data.csv")
 
-# Step 3: Quick Look at the Data
-print(df.head())
-print(df.columns)
+df = pd.read_csv("GDP.csv")
 
-# Step 4: Filter for a Country (e.g., United States)
-us_data = df[df["Country Name"] == "United States"]
+pivot_df = df.pivot(index="Year", columns="Country Name", values="Value")
+pivot_df = pivot_df.dropna(axis=1, how="any")
 
-# Step 5: Clean the Data (remove nulls and select years)
-us_data = us_data.loc[:, "1960":"2022"].T  # Transpose years to rows
-us_data.columns = ["GDP"]
-us_data = us_data.dropna()
-us_data.index = us_data.index.astype(int)
 
-# Step 6: Plot the GDP Over Time
+def prepare_country_data(country_name):
+    country = df[df["Country Name"] == country_name][["Year", "Value"]].dropna()
+    country.set_index("Year", inplace=True)
+    country["Growth Rate"] = country["Value"].pct_change() * 100
+    return country.dropna()
+
+
+us_data = prepare_country_data("United States")
+china_data = prepare_country_data("China")
+germany_data = prepare_country_data("Germany")
+
+years = us_data.index.astype(int).values.reshape(-1, 1)
+log_gdp_values = np.log(us_data["Value"].values).reshape(-1, 1)
+
+model = lnrg()
+model.fit(years, log_gdp_values)
+
+future_years = np.array(range(2023, 2030)).reshape(-1, 1)
+log_future_gdp = model.predict(future_years)
+future_gdp = np.exp(log_future_gdp)
+
+
+years = germany_data.index.astype(int).values.reshape(-1, 1)
+germany_log_gdp_values = np.log(germany_data["Value"].values).reshape(-1, 1)
+
+model = lnrg()
+model.fit(years, germany_log_gdp_values)
+
+
+germany_future_years = np.array(range(2023, 2030)).reshape(-1, 1)
+germany_log_future_gdp = model.predict(germany_future_years)
+germany_future_gdp = np.exp(germany_log_future_gdp) 
+
+
+years = china_data.index.astype(int).values.reshape(-1, 1)
+china_log_gdp_values = np.log(china_data["Value"].values).reshape(-1, 1)
+
+
+model = lnrg()
+model.fit(years, china_log_gdp_values)
+
+
+
+china_future_years = np.array(range(2023, 2030)).reshape(-1, 1)
+china_log_future_gdp = model.predict(china_future_years)
+china_future_gdp = np.exp(china_log_future_gdp) 
+
+
 plt.figure(figsize=(10, 6))
-plt.plot(us_data.index, us_data["GDP"] / 1e12)  # Convert to trillions
-plt.title("U.S. GDP Over Time")
+plt.plot(us_data.index, us_data["Value"] / 1e12, label="U.S.")
+plt.plot(china_data.index, china_data["Value"] / 1e12, label="China")
+plt.plot(germany_data.index, germany_data["Value"] / 1e12, label="Germany")
+
+
+plt.plot(future_years, future_gdp / 1e12, linestyle="--", color="blue")
+plt.plot(germany_future_years, germany_future_gdp / 1e12, linestyle="--", color="green")
+plt.plot(china_future_years, china_future_gdp / 1e12, linestyle="--", color="grey", label="Forecast GDP")
+plt.plot(china_future_years, china_future_gdp / 1e12, linestyle="--", color="orange")
+
+plt.title("GDP Comparison Over Time")
 plt.xlabel("Year")
 plt.ylabel("GDP (Trillions USD)")
+plt.legend()
 plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+china_positive = china_data[china_data["Growth Rate"] > 0]
+
+years = china_positive.index.astype(int).values.reshape(-1, 1)
+china_log_growth_values = np.log(china_positive["Growth Rate"].values).reshape(-1, 1)
+
+
+model = lnrg()
+model.fit(years, china_log_growth_values)
+
+china_future_years = np.array(range(2023, 2030)).reshape(-1, 1)
+china_log_future_growth = model.predict(china_future_years)
+china_future_growth = np.exp(china_log_future_growth)  
+germany_positive = germany_data[germany_data["Growth Rate"] > 0]
+years = germany_positive.index.astype(int).values.reshape(-1, 1)
+germany_log_growth_values = np.log(germany_positive["Growth Rate"].values).reshape(-1, 1)
+
+model = lnrg()
+model.fit(years, germany_log_growth_values)
+
+germany_future_years = np.array(range(2023, 2030)).reshape(-1, 1)
+germany_log_future_growth = model.predict(germany_future_years)
+germany_future_growth = np.exp(germany_log_future_growth)
+
+us_positive = us_data[us_data["Growth Rate"] > 0]
+
+years = us_positive.index.astype(int).values.reshape(-1, 1)
+us_log_growth_values = np.log(us_positive["Growth Rate"].values).reshape(-1, 1)
+
+model = lnrg()
+model.fit(years, us_log_growth_values)
+
+
+us_future_years = np.array(range(2023, 2030)).reshape(-1, 1)
+us_log_future_growth = model.predict(us_future_years)
+us_future_growth = np.exp(us_log_future_growth)
+
+plt.figure(figsize=(10, 6))
+plt.plot(us_positive.index.astype(int), us_positive["Growth Rate"], label= "us")
+plt.plot(us_future_years, us_future_growth, linestyle="--", label="Forecast Growth (us)", color = "blue")
+plt.plot(china_positive.index.astype(int), china_positive["Growth Rate"], label= "China")
+plt.plot(china_future_years, china_future_growth, linestyle="--", label="Forecast Growth (China)", color = "orange")
+plt.plot(germany_positive.index.astype(int), germany_positive["Growth Rate"], label= "germany")
+plt.plot(germany_future_years, germany_future_growth, linestyle="--", label="Forecast Growth (germany)", color = "green")
+
+plt.title("GDP Growth Rate Comparison Over Time")
+plt.xlabel("Year")
+plt.ylabel("Growth Rate (%)")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
 plt.show()
